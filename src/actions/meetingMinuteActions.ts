@@ -42,9 +42,9 @@ export async function createMeetingMinuteFromAudio(data: z.infer<typeof createFr
     const newMinuteData = {
       tenantId: user.tenantId,
       contractId: validatedData.contractId,
-      contractName: '', // This will be populated by the service/mongoose hook
+      contractName: '', // This will be populated by the service
       title: meetingTitle,
-      meetingDate: new Date().toISOString(),
+      meetingDate: new Date(),
       generatedMarkdown: aiResult.meetingMinutes,
       status: 'Em Andamento' as MeetingMinuteStatus,
       attachments: [] as IMeetingMinuteAttachment[],
@@ -66,7 +66,11 @@ export async function createMeetingMinuteFromAudio(data: z.infer<typeof createFr
 export async function updateMeetingMinute(id: string, data: z.infer<typeof updateMinuteSchema>, attachments: IMeetingMinuteAttachment[]) {
   try {
     const validatedData = updateMinuteSchema.parse(data);
-    await meetingMinuteService.update(id, { ...validatedData, attachments });
+    await meetingMinuteService.update(id, { 
+      ...validatedData, 
+      meetingDate: new Date(validatedData.meetingDate),
+      attachments 
+    } as Partial<IMeetingMinute>);
     
     revalidatePath(`/meeting-minutes/${id}/edit`);
     revalidatePath('/meeting-minutes');

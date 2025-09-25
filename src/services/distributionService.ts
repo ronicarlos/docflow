@@ -90,7 +90,8 @@ export async function notifyRelevantUsers(document: Document): Promise<number> {
     const now = new Date();
     const documentLinkPath = `/documentos/${document.id}`;
     const notificationTitle = `Documento Aprovado: ${document.code}`;
-    const notificationContent = `O documento "${document.description.substring(0, 50)}..." (Cód: ${document.code}, Rev: ${document.currentRevision.revisionNumber}, Área: ${document.area}) foi aprovado e está disponível. Acesse em ${documentLinkPath}`;
+    const revisionText = document.currentRevision ? document.currentRevision.revisionNumber : 'N/A';
+    const notificationContent = `O documento "${document.description.substring(0, 50)}..." (Cód: ${document.code}, Rev: ${revisionText}, Área: ${document.area}) foi aprovado e está disponível. Acesse em ${documentLinkPath}`;
 
     // Cria uma mensagem de notificação
     const notificationMessage = await prisma.notificationMessage.create({
@@ -143,7 +144,7 @@ export async function notifyRelevantUsers(document: Document): Promise<number> {
         actionType: 'notifications_sent',
         entityType: 'document',
         entityId: document.id,
-        entityDescription: `Documento ${document.code} (Rev: ${document.currentRevision.revisionNumber}) aprovado e distribuído`,
+        entityDescription: `Documento ${document.code} (Rev: ${(document.currentRevision ? document.currentRevision.revisionNumber : 'N/A')}) aprovado e distribuído`,
         details: `Notificações de distribuição enviadas para ${recipients.length} usuário(s).`,
         tenantId: document.tenantId,
       },

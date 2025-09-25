@@ -2,52 +2,71 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import type { MeetingMinute } from '@/types';
+import type { IMeetingMinute } from '@/types';
 
-// Helper to ensure we return plain objects
-function cleanObject<T>(obj: any): T {
-  return JSON.parse(JSON.stringify(obj));
+// Map Prisma MeetingMinute to IMeetingMinute
+function toIMinute(minute: any): IMeetingMinute {
+  return {
+    id: minute.id,
+    tenantId: minute.tenantId,
+    contractId: minute.contractId,
+    contractName: minute.contract?.name ?? '',
+    title: minute.title,
+    meetingDate: new Date(minute.meetingDate),
+    generatedMarkdown: minute.generatedMarkdown,
+    status: minute.status,
+    attachments: (minute.attachments ?? []).map((a: any) => ({
+      id: a.id,
+      fileName: a.fileName,
+      fileType: a.fileType,
+      fileSize: a.fileSize,
+      fileLink: a.fileLink,
+      uploadedAt: a.uploadedAt,
+      meetingMinuteId: a.meetingMinuteId,
+    })),
+    createdByUserId: minute.createdByUserId,
+  };
 }
 
-export async function findAll(tenantId: string): Promise<MeetingMinute[]> {
+export async function findAll(tenantId: string): Promise<IMeetingMinute[]> {
   try {
     const minutes = await prisma.meetingMinute.findMany({
       where: { tenantId },
       include: {
         contract: {
-          select: { id: true, title: true }
+          select: { id: true, name: true }
         }
       },
       orderBy: { meetingDate: 'desc' }
     });
-    return cleanObject(minutes);
+    return minutes.map(toIMinute);
   } catch (error) {
     console.error('Error finding all meeting minutes:', error);
     throw new Error('Failed to fetch meeting minutes from the database.');
   }
 }
 
-export async function findById(id: string): Promise<MeetingMinute | null> {
+export async function findById(id: string): Promise<IMeetingMinute | null> {
   try {
     const minute = await prisma.meetingMinute.findUnique({
       where: { id },
       include: {
         contract: {
-          select: { id: true, title: true }
+          select: { id: true, name: true }
         },
         attachments: true
       }
     });
     if (!minute) return null;
 
-    return cleanObject(minute);
+    return toIMinute(minute);
   } catch (error) {
     console.error(`Error finding meeting minute by ID ${id}:`, error);
     throw new Error('Failed to fetch meeting minute from the database.');
   }
 }
 
-export async function create(data: Partial<MeetingMinute>): Promise<MeetingMinute> {
+export async function create(data: Partial<IMeetingMinute>): Promise<IMeetingMinute> {
   try {
     // Validar campos obrigatórios
     if (!data.title) {
@@ -69,66 +88,51 @@ export async function create(data: Partial<MeetingMinute>): Promise<MeetingMinut
       throw new Error('ID do criador é obrigatório');
     }
 
-    console.log('Creating meeting minute with data:', JSON.stringify(data, null, 2));
-
-    const newMinute = await prisma.meetingMinute.create({
+    const created = await prisma.meetingMinute.create({
       data: {
         title: data.title,
-        meetingDate: data.meetingDate,
+        meetingDate: (data.meetingDate as unknown as Date)?.toISOString?.() ?? String(data.meetingDate),
         generatedMarkdown: data.generatedMarkdown,
-        status: data.status || 'draft',
+        status: (data as any).status || 'draft',
         tenantId: data.tenantId,
         contractId: data.contractId,
         createdByUserId: data.createdByUserId,
-        createdAt: new Date(),
-        updatedAt: new Date()
       },
       include: {
-        contract: {
-          select: { id: true, name: true }
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true }
-        }
+        contract: { select: { id: true, name: true } },
+        attachments: true,
       }
     });
 
-    console.log('Meeting minute created successfully:', newMinute.id);
-    return cleanObject(newMinute);
+    return toIMinute(created);
   } catch (error: any) {
     console.error('Error creating meeting minute:', error);
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message,
-      meta: error.meta
-    });
-
     if (error.code === 'P2002') {
       throw new Error('Já existe uma ata com estes dados.');
     }
     if (error.code === 'P2003') {
       throw new Error('Tenant, contrato ou usuário não encontrado. Verifique os dados fornecidos.');
     }
-    
     throw new Error(`Falha ao criar nova ata de reunião: ${error.message}`);
   }
 }
 
-export async function update(id: string, data: Partial<MeetingMinute>): Promise<MeetingMinute | null> {
+export async function update(id: string, data: Partial<IMeetingMinute>): Promise<IMeetingMinute | null> {
   try {
-    const updatedMinute = await prisma.meetingMinute.update({
+    const updated = await prisma.meetingMinute.update({
       where: { id },
       data: {
-        ...data,
-        updatedAt: new Date()
-      } as any,
+        title: data.title,
+        meetingDate: data.meetingDate ? (data.meetingDate as unknown as Date)?.toISOString?.() ?? String(data.meetingDate) : undefined,
+        generatedMarkdown: data.generatedMarkdown,
+        status: (data as any).status,
+      },
       include: {
-        contract: {
-          select: { id: true, title: true }
-        }
+        contract: { select: { id: true, name: true } },
+        attachments: true,
       }
     });
-    return cleanObject(updatedMinute);
+    return toIMinute(updated);
   } catch (error: any) {
     console.error(`Error updating meeting minute ${id}:`, error);
     if (error.code === 'P2025') {

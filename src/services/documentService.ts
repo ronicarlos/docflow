@@ -95,7 +95,7 @@ export async function findById(id: string): Promise<Document | null> {
 
 export async function create(data: Partial<Omit<Document, 'id' | '_id'>>): Promise<Document> {
     try {
-      // Validar campos obrigatórios
+      // Validar campos obrigatórios (formato UI)
       if (!data.code) {
         throw new Error('Código do documento é obrigatório');
       }
@@ -111,28 +111,60 @@ export async function create(data: Partial<Omit<Document, 'id' | '_id'>>): Promi
       if (!data.tenantId) {
         throw new Error('Tenant ID é obrigatório');
       }
-      if (!data.contractId) {
+
+      // Extrair IDs aceitando ambos formatos (UI e direto por IDs)
+      const contractId = (data as any).contractId ?? (typeof data.contract === 'string' ? data.contract : data.contract?.id);
+      if (!contractId) {
         throw new Error('Contract ID é obrigatório');
       }
-      if (!data.documentTypeId) {
+
+      const documentTypeId = (data as any).documentTypeId ?? (typeof data.documentType === 'string' ? data.documentType : data.documentType?.id);
+      if (!documentTypeId) {
         throw new Error('Tipo de documento é obrigatório');
       }
-      if (!data.disciplineId) {
-        throw new Error('Disciplina é obrigatória');
-      }
-      if (!data.createdById) {
+
+      const createdById = (data as any).createdById ?? (data.createdBy as any)?.id;
+      if (!createdById) {
         throw new Error('ID do criador é obrigatório');
       }
-      if (!data.responsibleUserId) {
+
+      const responsibleUserId = (data as any).responsibleUserId ?? (typeof data.responsibleUser === 'string' ? data.responsibleUser : (data.responsibleUser as any)?.id);
+      if (!responsibleUserId) {
         throw new Error('ID do responsável é obrigatório');
       }
-      if (!data.currentRevisionNumber) {
+
+      // Resolver disciplineId a partir da área quando não informado
+      let disciplineId: string | undefined = (data as any).disciplineId;
+      if (!disciplineId) {
+        const discipline = await prisma.discipline.findFirst({
+          where: { tenantId: data.tenantId, name: data.area },
+          select: { id: true }
+        });
+        if (!discipline) {
+          throw new Error('Disciplina não encontrada para a área informada');
+        }
+        disciplineId = discipline.id;
+      }
+
+      const locationAreaId = (data as any).locationAreaId ?? (typeof data.locationArea === 'string' ? data.locationArea : data.locationArea?.id) ?? null;
+      const locationSubAreaId = (data as any).locationSubAreaId ?? (typeof data.locationSubArea === 'string' ? data.locationSubArea : data.locationSubArea?.id) ?? null;
+
+      const approverId = (data as any).approverId ?? (data.approver as any)?.id ?? null;
+
+      const currentRevision = (data as any).currentRevision;
+      const currentRevisionNumber = (data as any).currentRevisionNumber ?? currentRevision?.revisionNumber;
+      const currentRevisionDate = (data as any).currentRevisionDate ?? currentRevision?.date;
+      const currentRevisionDescription = (data as any).currentRevisionDescription ?? currentRevision?.observation ?? null;
+      const currentRevisionFileLink = (data as any).currentRevisionFileLink ?? currentRevision?.fileLink ?? (data as any).fileLink ?? null;
+      const currentRevisionCreatedById = (data as any).currentRevisionCreatedById ?? currentRevision?.user?.id;
+
+      if (!currentRevisionNumber) {
         throw new Error('Número da revisão atual é obrigatório');
       }
-      if (!data.currentRevisionDate) {
+      if (!currentRevisionDate) {
         throw new Error('Data da revisão atual é obrigatória');
       }
-      if (!data.currentRevisionCreatedById) {
+      if (!currentRevisionCreatedById) {
         throw new Error('ID do criador da revisão atual é obrigatório');
       }
 
@@ -146,29 +178,29 @@ export async function create(data: Partial<Omit<Document, 'id' | '_id'>>): Promi
           area: data.area,
           elaborationDate: data.elaborationDate,
           lastStatusChangeDate: data.lastStatusChangeDate,
-          status: data.status || 'draft',
+          status: (data.status as any) || 'draft',
           fileLink: data.fileLink || null,
           isDeleted: data.isDeleted || false,
           deletedAt: data.deletedAt || null,
           validityDays: data.validityDays || null,
           requiresContinuousImprovement: data.requiresContinuousImprovement || false,
           nextReviewDate: data.nextReviewDate || null,
-          importId: data.importId || null,
+          importId: (data as any).importId || null,
           textContent: data.textContent || null,
-          tenantId: data.tenantId,
-          contractId: data.contractId,
-          documentTypeId: data.documentTypeId,
-          disciplineId: data.disciplineId,
-          locationAreaId: data.locationAreaId || null,
-          locationSubAreaId: data.locationSubAreaId || null,
-          createdById: data.createdById,
-          responsibleUserId: data.responsibleUserId,
-          approverId: data.approverId || null,
-          currentRevisionNumber: data.currentRevisionNumber,
-          currentRevisionDescription: data.currentRevisionDescription || null,
-          currentRevisionDate: data.currentRevisionDate,
-          currentRevisionFileLink: data.currentRevisionFileLink || null,
-          currentRevisionCreatedById: data.currentRevisionCreatedById,
+          tenantId: data.tenantId!,
+          contractId,
+          documentTypeId,
+          disciplineId,
+          locationAreaId,
+          locationSubAreaId,
+          createdById,
+          responsibleUserId,
+          approverId,
+          currentRevisionNumber,
+          currentRevisionDescription,
+          currentRevisionDate,
+          currentRevisionFileLink,
+          currentRevisionCreatedById,
           createdAt: new Date(),
           updatedAt: new Date()
         },
@@ -178,21 +210,9 @@ export async function create(data: Partial<Omit<Document, 'id' | '_id'>>): Promi
       console.log('Document created successfully:', newDocument.id);
       return cleanObject(newDocument);
     } catch (error: any) {
-      console.error('Erro ao criar documento no serviço:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        meta: error.meta
-      });
-      
-      if (error.code === 'P2002') {
-        throw new Error('Já existe um documento com este código para este inquilino.');
-      }
-      if (error.code === 'P2003') {
-        throw new Error('Tenant, contrato, tipo de documento, disciplina ou usuário não encontrado. Verifique os dados fornecidos.');
-      }
-      
-      throw new Error(`Falha ao criar novo documento: ${error.message}`);
+      console.error('Erro ao criar documento:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Falha ao criar documento no banco de dados.';
+      throw new Error(errorMessage);
     }
 }
 export async function update(id: string, data: Partial<Document>): Promise<Document | null> {
@@ -223,13 +243,26 @@ export async function addRevision(documentId: string, revisionData: Omit<Revisio
         const updatedDocument = await prisma.document.update({
             where: { id: documentId },
             data: {
+                // Cria a entidade de revisão relacionada
                 revisions: {
-                    push: revisionData
+                    create: {
+                        number: revisionData.revisionNumber,
+                        description: revisionData.observation ?? null,
+                        date: revisionData.date,
+                        fileLink: revisionData.fileLink ?? null,
+                        createdById: revisionData.user.id
+                    }
                 },
-                currentRevision: revisionData as any,
+                // Atualiza os campos agregados da revisão atual
+                currentRevisionNumber: revisionData.revisionNumber,
+                currentRevisionDescription: revisionData.observation ?? null,
+                currentRevisionDate: revisionData.date,
+                currentRevisionFileLink: revisionData.fileLink ?? null,
+                currentRevisionCreatedById: revisionData.user.id,
+                // Atualiza status e datas
                 status: revisionData.status,
-                lastStatusChangeDate: new Date(),
-                fileLink: revisionData.fileLink,
+                lastStatusChangeDate: revisionData.date,
+                fileLink: revisionData.fileLink ?? null,
                 updatedAt: new Date()
             },
             include: INCLUDE_RELATIONS
@@ -253,7 +286,7 @@ export async function softDelete(id: string): Promise<Document | null> {
       where: { id },
       data: {
         isDeleted: true,
-        deletedAt: new Date(),
+        deletedAt: new Date().toISOString(),
         updatedAt: new Date()
       }
     });

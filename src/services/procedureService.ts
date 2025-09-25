@@ -15,10 +15,8 @@ export async function findAll(tenantId: string): Promise<Procedure[]> {
       include: {
         responsibleUser: {
           select: { id: true, name: true, email: true }
-        },
-        approverUser: {
-          select: { id: true, name: true, email: true }
         }
+        // approverUser removed: relation does not exist in schema
       },
       orderBy: { title: 'asc' }
     });
@@ -40,10 +38,8 @@ export async function findById(id: string): Promise<Procedure | null> {
       include: {
         responsibleUser: {
           select: { id: true, name: true, email: true }
-        },
-        approverUser: {
-          select: { id: true, name: true, email: true }
         }
+        // approverUser removed: relation does not exist in schema
       }
     });
     return procedure ? cleanObject(procedure) : null;
@@ -132,10 +128,8 @@ export async function update(id: string, data: Partial<Procedure>): Promise<Proc
       include: {
         responsibleUser: {
           select: { id: true, name: true, email: true }
-        },
-        approverUser: {
-          select: { id: true, name: true, email: true }
         }
+        // approverUser removed: relation does not exist in schema
       }
     });
     return cleanObject(updatedProcedure);

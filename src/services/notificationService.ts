@@ -54,24 +54,32 @@ export async function getUnreadUserNotificationsForCurrentUser(
       },
     });
 
-    // Mapear para o formato esperado com messageSnapshot
-    return notifications.map(notification => ({
-      id: notification.id,
-      title: notification.title,
-      message: notification.message,
-      type: notification.type,
-      isRead: notification.isRead,
-      readAt: notification.readAt,
-      createdAt: notification.createdAt,
-      tenantId: notification.tenantId,
-      userId: notification.userId,
-      relatedDocumentId: inferDocumentIdFromTitle(notification.title, tenantId),
-      messageSnapshot: {
-        title: notification.title,
-        contentSnippet: notification.message.substring(0, 100) + 
-          (notification.message.length > 100 ? '...' : ''),
-      },
-    }));
+    // Mapear para o formato esperado com messageSnapshot (aguardando inferência assíncrona)
+    const mapped = await Promise.all(
+      notifications.map(async (notification) => {
+        const relatedDocumentId = await inferDocumentIdFromTitle(notification.title, tenantId);
+        return {
+          id: notification.id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          isRead: notification.isRead,
+          readAt: notification.readAt,
+          createdAt: notification.createdAt,
+          tenantId: notification.tenantId,
+          userId: notification.userId,
+          relatedDocumentId,
+          messageSnapshot: {
+            title: notification.title,
+            contentSnippet:
+              notification.message.substring(0, 100) +
+              (notification.message.length > 100 ? '...' : ''),
+          },
+        };
+      })
+    );
+
+    return mapped;
   } catch (error) {
     console.error('Erro ao buscar notificações não lidas:', error);
     throw new Error('Falha ao buscar notificações não lidas');
@@ -96,24 +104,32 @@ export async function getAllUserNotificationsForCurrentUser(
       },
     });
 
-    // Mapear para o formato esperado com messageSnapshot
-    return notifications.map(notification => ({
-      id: notification.id,
-      title: notification.title,
-      message: notification.message,
-      type: notification.type,
-      isRead: notification.isRead,
-      readAt: notification.readAt,
-      createdAt: notification.createdAt,
-      tenantId: notification.tenantId,
-      userId: notification.userId,
-      relatedDocumentId: inferDocumentIdFromTitle(notification.title, tenantId),
-      messageSnapshot: {
-        title: notification.title,
-        contentSnippet: notification.message.substring(0, 100) + 
-          (notification.message.length > 100 ? '...' : ''),
-      },
-    }));
+    // Mapear para o formato esperado com messageSnapshot (aguardando inferência assíncrona)
+    const mapped = await Promise.all(
+      notifications.map(async (notification) => {
+        const relatedDocumentId = await inferDocumentIdFromTitle(notification.title, tenantId);
+        return {
+          id: notification.id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          isRead: notification.isRead,
+          readAt: notification.readAt,
+          createdAt: notification.createdAt,
+          tenantId: notification.tenantId,
+          userId: notification.userId,
+          relatedDocumentId,
+          messageSnapshot: {
+            title: notification.title,
+            contentSnippet:
+              notification.message.substring(0, 100) +
+              (notification.message.length > 100 ? '...' : ''),
+          },
+        };
+      })
+    );
+
+    return mapped;
   } catch (error) {
     console.error('Erro ao buscar todas as notificações:', error);
     throw new Error('Falha ao buscar notificações');

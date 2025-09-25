@@ -65,7 +65,7 @@ export const AudioMemoForm: FC<AudioMemoFormProps> = ({ contracts, currentUser }
               title: "Ata Gerada com Sucesso!",
               description: "A ata de reunião foi criada e salva como rascunho.",
             });
-            router.push(`/meeting-minutes/${result.data._id}/edit`);
+            router.push(`/meeting-minutes/${result.data.id}/edit`);
           } else {
             toast({
               title: "Erro na Geração",
@@ -120,51 +120,32 @@ export const AudioMemoForm: FC<AudioMemoFormProps> = ({ contracts, currentUser }
                 <SelectValue placeholder={contracts.length === 0 ? "Nenhum contrato acessível" : "Selecione o contrato"} />
               </SelectTrigger>
               <SelectContent>
-                {contracts.map(contract => (
-                  <SelectItem key={contract.id} value={contract.id}>{contract.name}</SelectItem>
+                {contracts.map((contract) => (
+                  <SelectItem key={contract.id} value={contract.id}>
+                    {contract.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="audio-upload">Arquivo de Áudio (.mp3, .wav, .m4a, .ogg) *</Label>
-            <Label
-              htmlFor="audio-upload"
-              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/70 transition-colors"
-            >
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <UploadCloud className="w-10 h-10 mb-3 text-primary" />
-                <p className="mb-2 text-sm text-foreground">
-                  <span className="font-semibold">Clique para carregar</span> ou arraste e solte
-                </p>
-              </div>
-              <Input
-                id="audio-upload"
-                type="file"
-                className="hidden"
-                accept="audio/*"
-                onChange={handleFileChange}
-                disabled={isLoading}
-              />
-            </Label>
-            {audioFile && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Arquivo: <span className="font-medium text-foreground">{audioFile.name}</span>
-              </p>
-            )}
+            <Label htmlFor="audio-upload">Arquivo de Áudio *</Label>
+            <Input id="audio-upload" type="file" accept="audio/*" onChange={handleFileChange} />
+            <p className="text-sm text-muted-foreground">Formatos suportados: MP3, WAV, M4A, OGG.</p>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleGenerateAndSave} disabled={!audioFile || !selectedContractId || isLoading}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+              {isLoading ? 'Gerando e Salvando...' : 'Gerar e Salvar Rascunho'}
+            </Button>
           </div>
         </CardContent>
-        <CardFooter>
-          <Button onClick={handleGenerateAndSave} disabled={isLoading || !audioFile || !selectedContractId} className="w-full text-base py-6">
-            {isLoading ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <AudioLines className="mr-2 h-5 w-5" />
-            )}
-            Gerar e Salvar Rascunho da Ata
-          </Button>
+        <CardFooter className="text-xs text-muted-foreground">
+          A transcrição e sumarização são realizadas com IA. Revise o conteúdo antes de finalizar.
         </CardFooter>
       </Card>
     </div>
   );
-};
+}
