@@ -1,0 +1,771 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                     String                   @id @default(cuid())
+  name                   String                   @unique
+  cnpj                   String                   @unique
+  commercialPhone        String?
+  commercialEmail        String?
+  plan                   TenantPlan               @default(FREE)
+  subscriptionStatus     TenantSubscriptionStatus @default(INACTIVE)
+  subscriptionStartDate  DateTime
+  nextBillingDate        DateTime
+  accountOwnerName       String
+  accountOwnerEmail      String
+  paymentGatewayStatus   GatewayStatus            @default(NOT_APPLICABLE)
+  isActive               Boolean                  @default(true)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  addressStreet          String
+  addressNumber          String
+  addressComplement      String?
+  addressNeighborhood    String
+  addressCity            String
+  addressState           String
+  addressZipCode         String
+  addressCountry         String                   @default("Brasil")
+  aiAssistantMessages    AiAssistantMessage[]
+  analysisResults        AnalysisResult[]
+  calibrationInstruments CalibrationInstrument[]
+  companies              Company[]
+  contracts              Contract[]
+  disciplines            Discipline[]
+  distributionEventLogs  DistributionEventLog[]
+  distributionRules      DistributionRule[]
+  documentTypes          DocumentType[]
+  documents              Document[]
+  importLogs             ImportLog[]
+  intelligentTemplates   IntelligentTemplate[]
+  locationAreas          LocationArea[]
+  locationSubAreas       LocationSubArea[]
+  meetingMinutes         MeetingMinute[]
+  notificationMessages   NotificationMessage[]
+  procedures             Procedure[]
+  auditLogs              SystemEventLog[]
+  trainingGuideModules   TrainingGuideModule[]
+  userNotifications      UserNotification[]
+  users                  User[]
+  aiKnowledgeBase        AiKnowledgeBase[]
+
+  @@map("tenants")
+}
+
+model User {
+  id                                String                  @id @default(cuid())
+  email                             String                  @unique
+  name                              String
+  area                              String
+  role                              UserRole                @default(Viewer)
+  avatarUrl                         String?
+  canCreateRecords                  Boolean                 @default(false)
+  canEditRecords                    Boolean                 @default(false)
+  canDeleteRecords                  Boolean                 @default(false)
+  canDownloadDocuments              Boolean                 @default(true)
+  canApproveDocuments               Boolean                 @default(false)
+  canPrintDocuments                 Boolean                 @default(true)
+  isActive                          Boolean                 @default(true)
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+  tenantId                          String
+  password                          String
+  analysisResults                   AnalysisResult[]
+  calibrationInstrumentsCreated     CalibrationInstrument[] @relation("CalibrationCreator")
+  calibrationInstrumentsResponsible CalibrationInstrument[] @relation("CalibrationResponsible")
+  contractsCreated                  Contract[]              @relation("ContractCreator")
+  contractsResponsible              Contract[]              @relation("ContractResponsible")
+  documentsApproved                 Document[]              @relation("DocumentApprover")
+  documentsCreated                  Document[]              @relation("DocumentCreator")
+  documentsResponsible              Document[]              @relation("DocumentResponsible")
+  meetingMinutesCreated             MeetingMinute[]         @relation("MeetingMinuteCreator")
+  proceduresCreated                 Procedure[]             @relation("ProcedureCreator")
+  proceduresResponsible             Procedure[]             @relation("ProcedureResponsible")
+  auditLogs                         SystemEventLog[]
+  accessibleContracts               UserContractAccess[]
+  accessibleDisciplines             UserDisciplineAccess[]
+  userNotifications                 UserNotification[]
+  aiKnowledgeBase                   AiKnowledgeBase[]
+  tenant                            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("users")
+}
+
+model UserContractAccess {
+  id         String   @id @default(cuid())
+  userId     String
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contractId])
+  @@map("user_contract_access")
+}
+
+model UserDisciplineAccess {
+  id           String     @id @default(cuid())
+  userId       String
+  disciplineId String
+  discipline   Discipline @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, disciplineId])
+  @@map("user_discipline_access")
+}
+
+model Contract {
+  id                      String               @id @default(cuid())
+  name                    String
+  internalCode            String
+  client                  String
+  scope                   String?
+  startDate               String
+  endDate                 String
+  status                  ContractStatus       @default(active)
+  commonRisks             String[]
+  alertKeywords           String[]
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  tenantId                String
+  createdById             String?
+  responsibleUserId       String?
+  analysisDocumentTypeIds String[]
+  analysisResults         AnalysisResult[]
+  contractAIAnalysis      ContractAIAnalysis[]
+  contractAttachments     ContractAttachment[]
+  createdBy               User?                @relation("ContractCreator", fields: [createdById], references: [id])
+  responsibleUser         User?                @relation("ContractResponsible", fields: [responsibleUserId], references: [id])
+  tenant                  Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documents               Document[]
+  meetingMinutes          MeetingMinute[]
+  auditLogs               SystemEventLog[]
+  userAccess              UserContractAccess[]
+
+  @@unique([tenantId, internalCode])
+  @@map("contracts")
+}
+
+model ContractAttachment {
+  id         String   @id @default(cuid())
+  fileName   String
+  fileType   String
+  fileSize   Int
+  fileLink   String
+  uploadedAt String
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("contract_attachments")
+}
+
+model ContractAIAnalysis {
+  id              String    @id @default(cuid())
+  contractId      String
+  documentId      String?
+  analysisType    String
+  result          Json
+  riskLevel       String?
+  recommendations String[]
+  createdAt       DateTime  @default(now())
+  contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  document        Document? @relation(fields: [documentId], references: [id])
+
+  @@map("contract_ai_analysis")
+}
+
+model LocationArea {
+  id          String            @id @default(cuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  tenantId    String
+  documents   Document[]
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subAreas    LocationSubArea[]
+
+  @@unique([tenantId, code])
+  @@map("location_areas")
+}
+
+model LocationSubArea {
+  id             String       @id @default(cuid())
+  name           String
+  code           String
+  description    String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  tenantId       String
+  locationAreaId String
+  documents      Document[]
+  locationArea   LocationArea @relation(fields: [locationAreaId], references: [id])
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@map("location_sub_areas")
+}
+
+model Discipline {
+  id            String                 @id @default(cuid())
+  name          String
+  code          String
+  description   String?
+  color         String?
+  isActive      Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  tenantId      String
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentTypes DocumentType[]
+  documents     Document[]
+  userAccess    UserDisciplineAccess[]
+
+  @@unique([tenantId, code])
+  @@map("disciplines")
+}
+
+model DocumentType {
+  id                       String     @id @default(cuid())
+  name                     String
+  code                     String
+  requiredFields           String[]
+  requiresCriticalAnalysis Boolean    @default(false)
+  criticalAnalysisDays     Int        @default(0)
+  isActive                 Boolean    @default(true)
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+  tenantId                 String
+  disciplineId             String
+  discipline               Discipline @relation(fields: [disciplineId], references: [id])
+  tenant                   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documents                Document[]
+
+  @@unique([tenantId, code])
+  @@map("document_types")
+}
+
+model Document {
+  id                            String               @id @default(cuid())
+  code                          String
+  description                   String?
+  aiPrompt                      String?
+  area                          String
+  elaborationDate               String
+  lastStatusChangeDate          String
+  status                        DocumentStatus       @default(draft)
+  fileLink                      String?
+  isDeleted                     Boolean              @default(false)
+  deletedAt                     String?
+  validityDays                  Int?
+  requiresContinuousImprovement Boolean              @default(false)
+  nextReviewDate                String?
+  importId                      String?
+  textContent                   String?
+  createdAt                     DateTime             @default(now())
+  updatedAt                     DateTime             @updatedAt
+  tenantId                      String
+  contractId                    String
+  documentTypeId                String
+  disciplineId                  String
+  locationAreaId                String?
+  locationSubAreaId             String?
+  createdById                   String
+  responsibleUserId             String
+  approverId                    String?
+  currentRevisionNumber         String
+  currentRevisionDescription    String?
+  currentRevisionDate           String
+  currentRevisionFileLink       String?
+  currentRevisionCreatedById    String
+  contractAIAnalysis            ContractAIAnalysis[]
+  aiAnalysis                    DocumentAIAnalysis[]
+  approvals                     DocumentApproval[]
+  revisions                     DocumentRevision[]
+  tags                          DocumentTag[]
+  approver                      User?                @relation("DocumentApprover", fields: [approverId], references: [id])
+  contract                      Contract             @relation(fields: [contractId], references: [id])
+  createdBy                     User                 @relation("DocumentCreator", fields: [createdById], references: [id])
+  discipline                    Discipline           @relation(fields: [disciplineId], references: [id])
+  documentType                  DocumentType         @relation(fields: [documentTypeId], references: [id])
+  locationArea                  LocationArea?        @relation(fields: [locationAreaId], references: [id])
+  locationSubArea               LocationSubArea?     @relation(fields: [locationSubAreaId], references: [id])
+  responsibleUser               User                 @relation("DocumentResponsible", fields: [responsibleUserId], references: [id])
+  tenant                        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@map("documents")
+}
+
+model DocumentRevision {
+  id          String   @id @default(cuid())
+  number      String
+  description String?
+  date        String
+  fileLink    String?
+  createdAt   DateTime @default(now())
+  documentId  String
+  createdById String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_revisions")
+}
+
+model DocumentApproval {
+  id          String         @id @default(cuid())
+  status      ApprovalStatus
+  date        String
+  observation String?
+  createdAt   DateTime       @default(now())
+  documentId  String
+  userId      String
+  userName    String
+  userEmail   String
+  document    Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_approvals")
+}
+
+model DocumentTag {
+  id         String   @id @default(cuid())
+  name       String
+  color      String?
+  createdAt  DateTime @default(now())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_tags")
+}
+
+model DocumentAIAnalysis {
+  id           String   @id @default(cuid())
+  analysisType String
+  result       Json
+  confidence   Float?
+  suggestions  String[]
+  createdAt    DateTime @default(now())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_ai_analysis")
+}
+
+model MeetingMinute {
+  id                String                    @id @default(cuid())
+  title             String
+  meetingDate       String
+  generatedMarkdown String
+  status            MeetingMinuteStatus       @default(draft)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  tenantId          String
+  contractId        String
+  createdByUserId   String
+  attachments       MeetingMinuteAttachment[]
+  contract          Contract                  @relation(fields: [contractId], references: [id])
+  createdBy         User                      @relation("MeetingMinuteCreator", fields: [createdByUserId], references: [id])
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("meeting_minutes")
+}
+
+model MeetingMinuteAttachment {
+  id              String        @id @default(cuid())
+  fileName        String
+  fileType        String
+  fileSize        Int
+  fileLink        String
+  uploadedAt      String
+  meetingMinuteId String
+  meetingMinute   MeetingMinute @relation(fields: [meetingMinuteId], references: [id], onDelete: Cascade)
+
+  @@map("meeting_minute_attachments")
+}
+
+model CalibrationInstrument {
+  id                   String                  @id @default(cuid())
+  tag                  String
+  description          String
+  equipmentType        String
+  location             String
+  brand                String
+  model                String
+  serialNumber         String
+  calibrationFrequency Int
+  lastCalibrationDate  String
+  nextCalibrationDate  String
+  status               CalibrationStatus       @default(active)
+  observations         String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  tenantId             String
+  createdById          String
+  responsibleUserId    String?
+  attachments          CalibrationAttachment[]
+  createdBy            User                    @relation("CalibrationCreator", fields: [createdById], references: [id])
+  responsibleUser      User?                   @relation("CalibrationResponsible", fields: [responsibleUserId], references: [id])
+  tenant               Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tag])
+  @@map("calibration_instruments")
+}
+
+model CalibrationAttachment {
+  id                      String                @id @default(cuid())
+  fileName                String
+  fileType                String
+  fileSize                Int
+  fileLink                String
+  uploadedAt              String
+  calibrationInstrumentId String
+  calibrationInstrument   CalibrationInstrument @relation(fields: [calibrationInstrumentId], references: [id], onDelete: Cascade)
+
+  @@map("calibration_attachments")
+}
+
+model Procedure {
+  id                String          @id @default(cuid())
+  title             String
+  content           String
+  category          String?
+  tags              String[]
+  status            ProcedureStatus @default(draft)
+  version           String          @default("1.0")
+  isPublished       Boolean         @default(false)
+  publishedAt       String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  tenantId          String
+  createdById       String
+  responsibleUserId String?
+  createdBy         User            @relation("ProcedureCreator", fields: [createdById], references: [id])
+  responsibleUser   User?           @relation("ProcedureResponsible", fields: [responsibleUserId], references: [id])
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("procedures")
+}
+
+model AnalysisResult {
+  id              String     @id @default(cuid())
+  type            String
+  title           String
+  description     String?
+  result          Json
+  confidence      Float?
+  riskLevel       RiskLevel?
+  recommendations String[]
+  createdAt       DateTime   @default(now())
+  tenantId        String
+  contractId      String?
+  executedById    String?
+  updatedAt       DateTime   @updatedAt
+  contract        Contract?  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  executedBy      User?      @relation(fields: [executedById], references: [id])
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("analysis_results")
+}
+
+model IntelligentTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  template    Json
+  category    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("intelligent_templates")
+}
+
+model TrainingGuideModule {
+  id          String                @id @default(cuid())
+  title       String
+  description String?
+  order       Int
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  tenantId    String
+  lessons     TrainingGuideLesson[]
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("training_guide_modules")
+}
+
+model TrainingGuideLesson {
+  id          String              @id @default(cuid())
+  title       String
+  content     String
+  order       Int
+  duration    Int?
+  isCompleted Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  moduleId    String
+  module      TrainingGuideModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@map("training_guide_lessons")
+}
+
+model UserNotification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  readAt    String?
+  createdAt DateTime         @default(now())
+  tenantId  String
+  userId    String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notifications")
+}
+
+model NotificationMessage {
+  id         String          @id @default(cuid())
+  title      String
+  content    String
+  type       String
+  priority   MessagePriority @default(NORMAL)
+  isActive   Boolean         @default(true)
+  validUntil String?
+  createdAt  DateTime        @default(now())
+  tenantId   String
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("notification_messages")
+}
+
+model AiAssistantMessage {
+  id         String   @id @default(cuid())
+  question   String
+  answer     String
+  context    String?
+  confidence Float?
+  isHelpful  Boolean?
+  createdAt  DateTime @default(now())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("ai_assistant_messages")
+}
+
+model SystemEventLog {
+  id                String    @id @default(cuid())
+  userId            String
+  userName          String
+  userEmail         String
+  actionType        String
+  entityType        String
+  entityId          String?
+  entityDescription String?
+  details           String
+  ipAddress         String?
+  createdAt         DateTime  @default(now())
+  tenantId          String
+  contractId        String?
+  contract          Contract? @relation(fields: [contractId], references: [id])
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id])
+
+  @@map("system_event_logs")
+}
+
+model DistributionRule {
+  id          String                 @id @default(cuid())
+  name        String
+  description String?
+  conditions  Json
+  actions     Json
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  tenantId    String
+  eventLogs   DistributionEventLog[]
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("distribution_rules")
+}
+
+model DistributionEventLog {
+  id            String             @id @default(cuid())
+  ruleId        String
+  entityType    String
+  entityId      String
+  recipientType String
+  recipientId   String
+  status        DistributionStatus @default(PENDING)
+  message       String?
+  sentAt        String?
+  createdAt     DateTime           @default(now())
+  tenantId      String
+  rule          DistributionRule   @relation(fields: [ruleId], references: [id])
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("distribution_event_logs")
+}
+
+model ImportLog {
+  id             String       @id @default(cuid())
+  fileName       String
+  totalRecords   Int
+  successRecords Int
+  errorRecords   Int
+  status         ImportStatus @default(PROCESSING)
+  errors         Json?
+  createdAt      DateTime     @default(now())
+  completedAt    String?
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("import_logs")
+}
+
+model AiKnowledgeBase {
+  id        String   @id @default(cuid())
+  content   String
+  version   Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenantId  String
+  createdBy String
+  creator   User     @relation(fields: [createdBy], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("ai_knowledge_base")
+}
+
+model Company {
+  id        String      @id @default(cuid())
+  tenantId  String
+  nome      String
+  tipo      CompanyType
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("companies")
+}
+
+enum TenantPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum TenantSubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum GatewayStatus {
+  NOT_APPLICABLE
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ERROR
+}
+
+enum UserRole {
+  Viewer
+  Editor
+  Approver
+  Admin
+  SuperAdmin
+}
+
+enum ContractStatus {
+  active
+  inactive
+}
+
+enum DocumentStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+  archived
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum MeetingMinuteStatus {
+  draft
+  final
+  archived
+}
+
+enum CalibrationStatus {
+  active
+  inactive
+  maintenance
+}
+
+enum ProcedureStatus {
+  draft
+  review
+  approved
+  published
+  archived
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}
+
+enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DistributionStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum ImportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CompanyType {
+  FORNECEDOR
+  CLIENTE
+}

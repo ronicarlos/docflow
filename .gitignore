@@ -1,0 +1,52 @@
+# Root .gitignore for DocFlow (Next.js + Node)
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.*
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+
+# Builds
+build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.idea/
+.vscode/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel/
+
+# Genkit
+.genkit/*
+
+# Firebase debug logs
+firebase-debug.log
+firestore-debug.log
+
+# Environment
+.env
+
+# Misc
+*.pem
