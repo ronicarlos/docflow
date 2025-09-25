@@ -2,7 +2,7 @@
 'use client';
 
 import type { FC } from 'react';
-import type { Contract, User } from '@/types';
+import type { Contract } from '@/types';
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -28,10 +28,8 @@ import React, { useState, useTransition } from 'react';
 import { deleteContract } from '@/actions/contractActions';
 
 interface ContractActionsProps {
-  contract: Contract & {
-    responsibleUser?: User;
-  };
-  onEdit: (contract: Contract & { responsibleUser?: User }) => void;
+  contract: Contract;
+  onEdit?: (contract: Contract) => void;
 }
 
 const ContractActions: FC<ContractActionsProps> = ({ contract, onEdit }) => {
@@ -69,7 +67,7 @@ const ContractActions: FC<ContractActionsProps> = ({ contract, onEdit }) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Opções</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => onEdit(contract)}>
+          <DropdownMenuItem onClick={() => onEdit?.(contract)}>
               <Edit className="mr-2 h-4 w-4" />
               Editar Contrato
           </DropdownMenuItem>

@@ -59,7 +59,7 @@ export default function EditDocumentTypeModal({ docType, disciplines, children, 
   const isControlled = externalOpen !== undefined && externalOnClose !== undefined;
   const isOpen = isControlled ? externalOpen : internalOpen;
   const onOpenChange = isControlled ? externalOnClose : setInternalOpen;
-
+  
   const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<DocumentTypeFormData>({
     resolver: zodResolver(documentTypeSchema),
     defaultValues: {
@@ -72,7 +72,7 @@ export default function EditDocumentTypeModal({ docType, disciplines, children, 
   });
   
   const requiresAnalysis = watch('requiresCriticalAnalysis');
-
+  
   React.useEffect(() => {
     if (isOpen) {
       reset({
@@ -87,25 +87,30 @@ export default function EditDocumentTypeModal({ docType, disciplines, children, 
   
   const onSubmit = (data: DocumentTypeFormData) => {
     startTransition(async () => {
-      const result = docType
-        ? await updateDocumentType(docType.id, data)
-        : await createDocumentType(data);
-
-      if (result.success) {
-        toast({ title: "Sucesso!", description: result.message });
-        onOpenChange(false);
-        if (onSaveSuccess) {
-          onSaveSuccess();
+      try {
+        const result = docType
+          ? await updateDocumentType(docType.id, data)
+          : await createDocumentType(data);
+  
+        if (result && result.success) {
+          toast({ title: "Sucesso!", description: result.message });
+          onOpenChange(false);
+          if (onSaveSuccess) {
+            onSaveSuccess();
+          }
+          router.refresh(); // Refreshes server components on the current route
+        } else {
+          toast({ title: "Erro", description: result?.message || 'Falha ao comunicar com o servidor. Tente novamente.', variant: 'destructive' });
         }
-        router.refresh(); // Refreshes server components on the current route
-      } else {
-        toast({ title: "Erro", description: result.message, variant: 'destructive' });
+      } catch (error) {
+        console.error('Erro ao chamar Server Action de Tipo de Documento:', error);
+        toast({ title: 'Erro de Rede', description: 'Falha ao comunicar com o servidor. Tente novamente.', variant: 'destructive' });
       }
     });
   };
-
+  
   const disciplineOptions = disciplines.map(d => ({ value: d.id, label: d.name }));
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}

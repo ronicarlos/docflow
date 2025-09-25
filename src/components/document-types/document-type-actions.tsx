@@ -39,20 +39,30 @@ const DocumentTypeActions: FC<DocumentTypeActionsProps> = ({ docType, onEdit }) 
 
   const handleDelete = () => {
     startTransition(async () => {
-      const result = await deleteDocumentType(docType.id);
-      if (result.success) {
+      try {
+        const result = await deleteDocumentType(docType.id);
+        if (result && result.success) {
+          toast({
+            title: "Tipo de Documento Excluído!",
+            description: result.message,
+          });
+        } else {
+          toast({
+            title: "Falha ao Excluir",
+            description: result?.message || 'Falha ao comunicar com o servidor. Tente novamente.',
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao chamar deleteDocumentType:', error);
         toast({
-          title: "Tipo de Documento Excluído!",
-          description: result.message,
-        });
-      } else {
-        toast({
-          title: "Falha ao Excluir",
-          description: result.message,
+          title: "Erro de Rede",
+          description: "Falha ao comunicar com o servidor. Tente novamente.",
           variant: "destructive",
         });
+      } finally {
+        setIsDeleteDialogOpen(false);
       }
-      setIsDeleteDialogOpen(false);
     });
   };
 

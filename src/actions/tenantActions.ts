@@ -43,9 +43,9 @@ export async function updateTenant(tenantId: string, data: TenantEditActionData)
             cnpj: validatedData.cnpj,
             commercialPhone: validatedData.commercialPhone,
             commercialEmail: validatedData.commercialEmail,
-            logoUrl: validatedData.logoUrl,
+            logoUrl: validatedData.logoUrl ?? undefined,
             address: validatedData.address,
-            accountOwnerId: validatedData.accountOwner?.email ? undefined : undefined, // Será necessário buscar o ID do usuário pelo email
+            accountOwner: validatedData.accountOwner,
         });
 
         if (!updatedTenant) {

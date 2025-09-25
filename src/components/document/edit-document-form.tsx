@@ -126,6 +126,26 @@ export default function EditDocumentForm({
 
   const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DocumentEditFormData>({
     resolver: zodResolver(documentEditSchema),
+    defaultValues: {
+      contractId: '',
+      documentTypeId: '',
+      code: '',
+      revision: '',
+      description: '',
+      aiPrompt: '',
+      area: '',
+      status: 'draft',
+      responsibleUserId: '',
+      approvingUserId: NONE_VALUE,
+      elaborationDate: '',
+      locationAreaId: NONE_VALUE,
+      locationSubAreaId: NONE_VALUE,
+      file: undefined,
+      requiresContinuousImprovement: false,
+      validityDays: null,
+      nextReviewDate: '',
+      textContent: ''
+    }
   });
   
   const getSafeId = (field: any): string => {
@@ -401,18 +421,18 @@ export default function EditDocumentForm({
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <Label htmlFor="code-edit">Código do Documento *</Label>
-                    <Controller name="code" control={control} render={({ field }) => <Input id="code-edit" {...field} />} />
+                    <Controller name="code" control={control} render={({ field }) => <Input id="code-edit" {...field} value={field.value ?? ''} />} />
                     {errors.code && <p className="text-sm text-destructive mt-1">{errors.code.message}</p>}
                 </div>
                 <div>
                     <Label htmlFor="revision-edit">Revisão (Atual) *</Label>
-                    <Controller name="revision" control={control} render={({ field }) => <Input id="revision-edit" {...field} />} />
+                    <Controller name="revision" control={control} render={({ field }) => <Input id="revision-edit" {...field} value={field.value ?? ''} />} />
                     {errors.revision && <p className="text-sm text-destructive mt-1">{errors.revision.message}</p>}
                 </div>
             </div>
             <div>
                 <Label htmlFor="elaborationDate-edit">Data de Elaboração *</Label>
-                <Controller name="elaborationDate" control={control} render={({ field }) => <Input id="elaborationDate-edit" type="date" {...field} />} />
+                <Controller name="elaborationDate" control={control} render={({ field }) => <Input id="elaborationDate-edit" type="date" {...field} value={field.value ?? ''} />} />
                 {errors.elaborationDate && <p className="text-sm text-destructive mt-1">{errors.elaborationDate.message}</p>}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -500,7 +520,7 @@ export default function EditDocumentForm({
             </div>
              <div>
                 <Label htmlFor="description-edit">Descrição *</Label>
-                <Controller name="description" control={control} render={({ field }) => ( <Textarea id="description-edit" {...field} rows={4} placeholder="Descreva o propósito e o conteúdo do documento." /> )} />
+                <Controller name="description" control={control} render={({ field }) => ( <Textarea id="description-edit" {...field} value={field.value ?? ''} rows={4} placeholder="Descreva o propósito e o conteúdo do documento." /> )} />
                 {errors.description && <p className="text-sm text-destructive mt-1">{errors.description.message}</p>}
             </div>
              <div className="flex items-center space-x-2">
@@ -516,7 +536,7 @@ export default function EditDocumentForm({
                     </div>
                     <div>
                         <Label htmlFor="nextReviewDate-edit">Data Próxima Análise (Calculada)</Label>
-                        <Controller name="nextReviewDate" control={control} render={({ field }) => ( <Input id="nextReviewDate-edit" type="date" {...field} readOnly className="bg-muted/50" /> )} />
+                        <Controller name="nextReviewDate" control={control} render={({ field }) => ( <Input id="nextReviewDate-edit" type="date" {...field} value={field.value ?? ''} readOnly className="bg-muted/50" /> )} />
                     </div>
                 </div>
             )}

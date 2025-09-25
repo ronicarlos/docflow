@@ -61,7 +61,7 @@ export async function notifyRelevantUsers(document: Document): Promise<number> {
             // Garante que o usuário existe, não está já na lista de destinatários e tem acesso ao contrato do documento
             if (user && !recipients.find(r => r.id === user.id)) {
               const canAccessContract = user.role === 'Admin' || 
-                user.accessibleContracts.some(ac => ac.contractId === document.contract.id);
+                user.accessibleContracts.some(ac => ac.contractId === (typeof document.contract === 'string' ? document.contract : document.contract.id));
               
               if (canAccessContract) {
                 recipients.push({

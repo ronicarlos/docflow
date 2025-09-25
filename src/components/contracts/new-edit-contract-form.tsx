@@ -86,7 +86,8 @@ export default function NewEditContractForm({ contract, users, mode }: NewEditCo
         });
 
         // Para edição, incluir o ID do contrato nos dados
-        const dataWithId = isEditing ? { ...data, id: contract.id } : data;
+        // Removido: ID não deve ser incluído nos dados; é passado como parâmetro separado
+        const dataWithId = data;
         
         // Sanitizar dados antes da validação
         console.log('🧹 [DEBUG] Sanitizando dados...');
@@ -123,39 +124,14 @@ export default function NewEditContractForm({ contract, users, mode }: NewEditCo
           }
         }
 
-        // Preparar FormData
-        console.log('📦 [DEBUG] Preparando FormData...');
-        const formData = new FormData();
-        
-        // Usar dados sanitizados diretamente (sem validação para edição)
-        const dataToUse = sanitizedData;
-        
-        // Adicionar campos básicos
-        Object.entries(dataToUse).forEach(([key, value]) => {
-          if (value !== null && value !== undefined && value !== '') {
-            if (Array.isArray(value)) {
-              // Para arrays, adicionar cada item com o mesmo nome de campo
-              value.forEach((item) => {
-                if (item && item.trim() !== '') {
-                  formData.append(key, item.trim());
-                  console.log(`📝 [DEBUG] Adicionado array item: ${key} = ${item.trim()}`);
-                }
-              });
-            } else {
-              formData.append(key, String(value));
-              console.log(`📝 [DEBUG] Adicionado campo: ${key} = ${String(value)}`);
-            }
-          }
-        });
-
         console.log('🚀 [DEBUG] Chamando Server Action...');
         let result;
         if (isEditing) {
           console.log('✏️ [DEBUG] Modo edição - chamando updateContract');
-          result = await updateContract(contract.id, formData);
+          result = await updateContract(contract.id, sanitizedData as UpdateContractData);
         } else {
           console.log('➕ [DEBUG] Modo criação - chamando createContract');
-          result = await createContract(formData);
+          result = await createContract(sanitizedData as CreateContractData);
         }
 
         console.log('📊 [DEBUG] Resultado da Server Action:', JSON.stringify(result, null, 2));
@@ -175,12 +151,12 @@ export default function NewEditContractForm({ contract, users, mode }: NewEditCo
             router.push('/contracts');
           }, 1000);
         } else {
-          console.error('❌ [DEBUG] Erro na operação:', result.error);
+          console.error('❌ [DEBUG] Erro na operação:', result.message);
           console.error('❌ [DEBUG] Erros detalhados:', result.errors);
           
           toast({
             title: 'Erro ao Salvar',
-            description: result.error || 'Ocorreu um erro ao salvar o contrato.',
+            description: result.message || 'Ocorreu um erro ao salvar o contrato.',
             variant: 'destructive',
           });
           

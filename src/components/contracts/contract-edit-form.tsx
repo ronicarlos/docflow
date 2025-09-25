@@ -38,19 +38,18 @@ export function ContractEditForm({ contract }: ContractEditFormProps) {
   } = useForm<UpdateContractData>({
     resolver: zodResolver(updateContractSchema),
     defaultValues: {
-      id: contract.id,
-      name: contract.name || '',
-      internalCode: contract.internalCode || '',
-      client: contract.client || '',
-      scope: contract.scope || '',
-      startDate: contract.startDate ? new Date(contract.startDate).toISOString().split('T')[0] : '',
-      endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : '',
-      status: contract.status || 'active',
-      responsibleUserId: contract.responsibleUserId || '',
-      tenantId: contract.tenantId,
-      commonRisks: contract.commonRisks || [],
-      alertKeywords: contract.alertKeywords || [],
-      analysisDocumentTypeIds: contract.analysisDocumentTypeIds || [],
+       name: contract.name || '',
+       internalCode: contract.internalCode || '',
+       client: contract.client || '',
+       scope: contract.scope || '',
+       startDate: contract.startDate ? new Date(contract.startDate).toISOString().split('T')[0] : '',
+       endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : '',
+       status: contract.status || 'active',
+       responsibleUserId: contract.responsibleUserId || '',
+       // tenantId removido: será definido pela Server Action
+       commonRisks: contract.commonRisks || [],
+       alertKeywords: contract.alertKeywords || [],
+       analysisDocumentTypeIds: contract.analysisDocumentTypeIds || [],
     },
     mode: 'onChange',
   });
@@ -99,7 +98,6 @@ export function ContractEditForm({ contract }: ContractEditFormProps) {
       setSaving(true);
       const payload: UpdateContractData = {
         ...data,
-        id: contract.id,
         status: (data.status as 'active' | 'inactive') || 'active',
         commonRisks,
         alertKeywords,
@@ -116,14 +114,17 @@ export function ContractEditForm({ contract }: ContractEditFormProps) {
         console.log('✅ [FORM] Sucesso! Exibindo toast e redirecionando');
         toast({ 
           title: 'Sucesso', 
-          description: 'Contrato atualizado com sucesso!' 
+          description: result.message || 'Contrato atualizado com sucesso!' 
         });
         router.push('/contracts');
       } else {
-        console.log('❌ [FORM] Erro na action:', result.error);
+        console.log('❌ [FORM] Erro na action. Mensagem:', result.message);
+        if (result.errors?.length) {
+          console.log('❌ [FORM] Erros de validação:', result.errors);
+        }
         toast({ 
           title: 'Erro ao salvar', 
-          description: result.error || 'Falha na atualização', 
+          description: result.message || 'Falha na atualização', 
           variant: 'destructive' 
         });
       }
@@ -143,8 +144,7 @@ export function ContractEditForm({ contract }: ContractEditFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Campos ocultos necessários para validação */}
-      <input type="hidden" {...register('id')} />
-      <input type="hidden" {...register('tenantId')} />
+      {/* tenantId removido do formulário */}
 
       {/* Informações Básicas */}
       <Card>

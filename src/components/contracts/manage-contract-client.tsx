@@ -26,6 +26,7 @@ import { AlternativeSelect } from '../shared/alternative-select';
 import type { AnalysisResult } from '@/types/AnalysisResult';
 import Link from 'next/link';
 import { Textarea } from '../ui/textarea';
+import type { UpdateContractData } from '@/lib/validations/contract';
 
 interface ManageContractClientProps {
     contract: Contract;
@@ -137,7 +138,7 @@ export default function ManageContractClient({ contract, users, documentTypes, d
             )
           );
 
-          // Prepare FormData for the action
+          // Prepare typed object payload for the action
           const commonRisks = formData.commonRisksText
             ? formData.commonRisksText.split('\n').map((s) => s.trim()).filter(Boolean)
             : [];
@@ -145,27 +146,29 @@ export default function ManageContractClient({ contract, users, documentTypes, d
             ? formData.alertKeywordsText.split('\n').map((s) => s.trim()).filter(Boolean)
             : [];
 
-          const fd = new FormData();
-          fd.set('name', formData.name);
-          fd.set('internalCode', formData.internalCode);
-          fd.set('client', formData.client);
-          fd.set('startDate', formData.startDate);
-          fd.set('endDate', formData.endDate);
-          fd.set('scope', formData.scope ?? '');
-          if (formData.status) fd.set('status', formData.status);
-          const responsibleUserId = (formData as any).responsibleUserId ?? '';
-          fd.set('responsibleUserId', responsibleUserId);
-          commonRisks.forEach((r) => fd.append('commonRisks', r));
-          alertKeywords.forEach((k) => fd.append('alertKeywords', k));
-          evidenceDocTypeIds.forEach((id) => fd.append('analysisDocumentTypeIds', id));
+          const payload: UpdateContractData = {
+            name: formData.name,
+            internalCode: formData.internalCode,
+            client: formData.client,
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            scope: formData.scope ?? undefined,
+            status: formData.status,
+            responsibleUserId: (((formData as any).responsibleUserId ?? '') as string).trim() === ''
+              ? null
+              : ((formData as any).responsibleUserId as string),
+            commonRisks,
+            alertKeywords,
+            analysisDocumentTypeIds: evidenceDocTypeIds,
+          };
 
           const contractUpdateResult = await updateContract(
             contract.id,
-            fd
+            payload
           );
 
           if (!contractUpdateResult.success) {
-            toast({ title: "Falha ao Salvar Contrato", description: contractUpdateResult.error, variant: "destructive" });
+            toast({ title: "Falha ao Salvar Contrato", description: contractUpdateResult.message, variant: "destructive" });
             return;
           }
 

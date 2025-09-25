@@ -18,6 +18,9 @@ import {
   Lock
 } from 'lucide-react';
 import { ChangePasswordForm } from '@/components/settings/change-password-form';
+  
+  // Novo: buscar nome do tenant para exibir nome da empresa
+  import { findTenantById } from '@/services/tenantService';
 
 export default async function ProfilePage() {
   // Verificar autenticação
@@ -27,6 +30,8 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
+  // Novo: obter detalhes do tenant (empresa) para exibir nome atualizado
+  const tenantDetails = await findTenantById(currentUser.tenantId);
   // Função para obter iniciais do nome
   const getInitials = (name: string) => {
     return name
@@ -134,7 +139,12 @@ export default async function ProfilePage() {
                     <Building2 className="mr-2 h-4 w-4" />
                     Organização
                   </div>
-                  <p className="font-medium">{currentUser.tenantId}</p>
+                  <p className="font-medium">
+                    {tenantDetails?.name ?? currentUser.tenantId}
+                    {tenantDetails?.name ? (
+                      <span className="ml-2 font-mono text-xs text-muted-foreground">({currentUser.tenantId})</span>
+                    ) : null}
+                  </p>
                 </div>
 
                 {currentUser.area && (

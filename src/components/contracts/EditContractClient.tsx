@@ -14,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import type { UpdateContractData } from '@/lib/validations/contract';
 
 interface EditContractClientProps {
     contract: Contract;
@@ -74,21 +75,24 @@ const EditContractClient: FC<EditContractClientProps> = ({ contract, users, docu
                     ? data.alertKeywordsText.split('\n').filter(k => k.trim())
                     : [];
 
-                const fd = new FormData();
-                fd.set('name', data.name);
-                fd.set('internalCode', data.internalCode);
-                fd.set('client', data.client);
-                fd.set('startDate', data.startDate);
-                fd.set('endDate', data.endDate);
-                fd.set('scope', data.scope ?? '');
-                if (data.status) fd.set('status', data.status);
-                const responsibleUserId = (data as any).responsibleUserId ?? '';
-                fd.set('responsibleUserId', responsibleUserId);
-                fd.append('tenantId', user.tenantId);
-                commonRisks.forEach((r) => fd.append('commonRisks', r));
-                alertKeywords.forEach((k) => fd.append('alertKeywords', k));
+                // Montar objeto tipado diretamente para a Server Action
+                const payload: UpdateContractData = {
+                    name: data.name,
+                    internalCode: data.internalCode,
+                    client: data.client,
+                    startDate: data.startDate,
+                    endDate: data.endDate,
+                    scope: data.scope ?? undefined,
+                    status: data.status,
+                    // Normaliza responsável: undefined/'' -> null
+                    responsibleUserId: (((data as any).responsibleUserId ?? '') as string).trim() === ''
+                        ? null
+                        : ((data as any).responsibleUserId as string),
+                    commonRisks,
+                    alertKeywords,
+                };
 
-                const result = await updateContract(contract.id, fd);
+                const result = await updateContract(contract.id, payload);
 
                 if (result.success) {
                     toast({
@@ -99,7 +103,7 @@ const EditContractClient: FC<EditContractClientProps> = ({ contract, users, docu
                 } else {
                     toast({
                         title: "Erro ao Atualizar",
-                        description: result.error || "Ocorreu um erro ao salvar as alterações.",
+                        description: result.message || "Ocorreu um erro ao salvar as alterações.",
                         variant: "destructive",
                     });
                 }

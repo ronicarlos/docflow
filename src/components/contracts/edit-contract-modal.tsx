@@ -300,7 +300,7 @@ const EditContractModal = ({ isOpen, onClose, contract, users }: EditContractMod
             <div className="space-y-2">
               <Label htmlFor="responsibleUserId">Usuário Responsável</Label>
               <Select
-                value={watch('responsibleUserId')}
+                value={watch('responsibleUserId') || undefined}
                 onValueChange={(value) => {
                   console.log('🔍 [DEBUG] Selecionando usuário:', value);
                   console.log('🔍 [DEBUG] Tipo do valor:', typeof value);

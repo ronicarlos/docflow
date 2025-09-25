@@ -248,7 +248,7 @@ export default function ContractsGrid({
         } else {
           toast({
             title: 'Erro',
-            description: result.error || 'Erro ao excluir contrato',
+            description: result.message || 'Erro ao excluir contrato',
             variant: 'destructive',
           });
         }

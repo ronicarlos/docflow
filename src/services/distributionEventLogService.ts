@@ -17,7 +17,7 @@ export async function findAll(tenantId: string): Promise<IDistributionEventLog[]
   try {
     const logs = await prisma.distributionEventLog.findMany({
       where: { tenantId },
-      orderBy: { date: 'desc' } // Sort by date instead of createdAt
+      orderBy: { createdAt: 'desc' } // Sort by createdAt (valid field)
     });
     
     return cleanObject(logs);

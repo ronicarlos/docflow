@@ -144,13 +144,8 @@ export const contractValidationSchema = contractBaseSchema.refine(
   }
 );
 
-// Schema para atualização (todos os campos opcionais exceto ID)
-export const updateContractSchema = contractBaseSchema.partial().extend({
-  id: z
-    .string()
-    .min(1, 'ID do contrato é obrigatório')
-    .uuid('ID do contrato inválido')
-}).refine(
+// Schema para atualização (todos os campos opcionais; ID é fornecido separadamente na Server Action)
+export const updateContractSchema = contractBaseSchema.partial().refine(
   (data) => {
     // Só valida as datas se ambas estiverem presentes
     if (data.startDate && data.endDate) {

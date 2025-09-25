@@ -69,7 +69,9 @@ export interface CreateContractData {
   startDate: string;
   endDate: string;
   status: ContractStatus;
-  responsibleUserId: string;
+  tenantId: string;
+  createdById?: string;
+  responsibleUserId?: string | null;
   commonRisks?: string[];
   alertKeywords?: string[];
   analysisDocumentTypeIds?: string[];

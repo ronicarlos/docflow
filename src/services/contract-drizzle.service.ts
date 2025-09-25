@@ -1,288 +1,92 @@
-import { eq, and, ilike, or, desc } from 'drizzle-orm';
-import { db, contracts, type Contract, type NewContract, type CreateContractData, type UpdateContractData } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
+import type { Contract, CreateContractData, UpdateContractData, ContractListResponse } from '@/types/Contract';
 
 export interface ContractFilters {
   tenantId: string;
   status?: 'active' | 'inactive';
-  responsibleUserId?: string;
+  responsibleUserId?: string | null;
   search?: string;
   expiringInDays?: number;
 }
 
-export interface ContractListResponse {
-  contracts: Contract[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
 export class ContractDrizzleService {
-  /**
-   * Buscar todos os contratos com filtros
-   */
   static async findAll(tenantId: string, filters?: Partial<ContractFilters>): Promise<Contract[]> {
-    try {
-      let query = db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
-
-      // Aplicar filtros adicionais
-      const conditions = [eq(contracts.tenantId, tenantId)];
-
-      if (filters?.status) {
-        conditions.push(eq(contracts.status, filters.status));
-      }
-
-      if (filters?.responsibleUserId) {
-        conditions.push(eq(contracts.responsibleUserId, filters.responsibleUserId));
-      }
-
-      if (filters?.search) {
-        const searchCondition = or(
-          ilike(contracts.name, `%${filters.search}%`),
-          ilike(contracts.internalCode, `%${filters.search}%`),
-          ilike(contracts.client, `%${filters.search}%`)
-        );
-        if (searchCondition) {
-          conditions.push(searchCondition);
-        }
-      }
-
-      const result = await db
-        .select()
-        .from(contracts)
-        .where(and(...conditions))
-        .orderBy(desc(contracts.createdAt));
-
-      return result;
-    } catch (error) {
-      console.error('Erro ao buscar contratos:', error);
-      throw new Error('Falha ao buscar contratos');
+    const where: any = { tenantId };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.responsibleUserId) where.responsibleUserId = filters.responsibleUserId;
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { internalCode: { contains: filters.search, mode: 'insensitive' } },
+        { client: { contains: filters.search, mode: 'insensitive' } },
+      ];
     }
+    const result = await prisma.contract.findMany({ where, orderBy: { createdAt: 'desc' } });
+    return result as unknown as Contract[];
   }
 
-  /**
-   * Buscar contrato por ID
-   */
   static async findById(id: string, tenantId: string): Promise<Contract | null> {
-    try {
-      const result = await db
-        .select()
-        .from(contracts)
-        .where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)))
-        .limit(1);
-
-      return result[0] || null;
-    } catch (error) {
-      console.error('Erro ao buscar contrato por ID:', error);
-      throw new Error('Falha ao buscar contrato');
-    }
+    const result = await prisma.contract.findFirst({ where: { id, tenantId } });
+    return (result as unknown as Contract) || null;
   }
 
-  /**
-   * Criar novo contrato
-   */
   static async create(data: CreateContractData): Promise<Contract> {
-    console.group('🗄️ [DATABASE SERVICE] create iniciado');
-    console.log('📥 Dados recebidos para criação:', JSON.stringify(data, null, 2));
-    
-    try {
-      const newContract: NewContract = {
-        ...data,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      console.log('🔄 Dados preparados para inserção:', JSON.stringify(newContract, null, 2));
-      console.log('🔗 Executando query INSERT...');
-
-      const result = await db
-        .insert(contracts)
-        .values(newContract)
-        .returning();
-
-      console.log('✅ Query executada com sucesso');
-      console.log('📊 Resultado da inserção:', JSON.stringify(result, null, 2));
-      console.log('🆔 ID do contrato criado:', result[0]?.id);
-
-      return result[0];
-    } catch (error: any) {
-      console.error('💥 ERRO no create do banco:');
-      console.error('📝 Mensagem:', error?.message);
-      console.error('📚 Stack:', error?.stack);
-      console.error('🔍 Erro completo:', error);
-      
-      // Verificar se é erro de constraint/validação do banco
-      if (error?.code) {
-        console.error('🏷️ Código do erro:', error.code);
-      }
-      if (error?.constraint) {
-        console.error('🔒 Constraint violada:', error.constraint);
-      }
-      if (error?.detail) {
-        console.error('📋 Detalhes do erro:', error.detail);
-      }
-      
-      throw new Error('Falha ao criar contrato');
-    } finally {
-      console.groupEnd();
-    }
+    const created = await prisma.contract.create({ data: {
+      ...data,
+      // createdAt/updatedAt são gerenciados pelo Prisma (default/updatedAt)
+    } as any });
+    return created as unknown as Contract;
   }
 
-  /**
-   * Atualizar contrato
-   */
   static async update(id: string, tenantId: string, data: Partial<UpdateContractData>): Promise<Contract | null> {
-    console.group('🗄️ [DATABASE SERVICE] update iniciado');
-    console.log('🆔 ID do contrato:', id);
-    console.log('🏢 Tenant ID:', tenantId);
-    console.log('📥 Dados recebidos para atualização:', JSON.stringify(data, null, 2));
-    
-    try {
-      // Remover campos que não devem ser atualizados
-      const { id: _, createdAt, ...updateData } = data;
-      
-      const finalUpdateData = {
-        ...updateData,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      console.log('🔄 Dados preparados para atualização:', JSON.stringify(finalUpdateData, null, 2));
-      console.log('🔍 Condições WHERE: id =', id, 'AND tenantId =', tenantId);
-      console.log('🔗 Executando query UPDATE...');
-      
-      const result = await db
-        .update(contracts)
-        .set(finalUpdateData)
-        .where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)))
-        .returning();
-
-      console.log('✅ Query executada com sucesso');
-      console.log('📊 Resultado da atualização:', JSON.stringify(result, null, 2));
-      console.log('📈 Registros afetados:', result.length);
-      
-      if (result.length === 0) {
-        console.warn('⚠️ Nenhum registro foi atualizado - contrato não encontrado ou não pertence ao tenant');
-      } else {
-        console.log('🆔 ID do contrato atualizado:', result[0]?.id);
-      }
-
-      return result[0] || null;
-    } catch (error: any) {
-      console.error('💥 ERRO no update do banco:');
-      console.error('📝 Mensagem:', error?.message);
-      console.error('📚 Stack:', error?.stack);
-      console.error('🔍 Erro completo:', error);
-      
-      // Verificar se é erro de constraint/validação do banco
-      if (error?.code) {
-        console.error('🏷️ Código do erro:', error.code);
-      }
-      if (error?.constraint) {
-        console.error('🔒 Constraint violada:', error.constraint);
-      }
-      if (error?.detail) {
-        console.error('📋 Detalhes do erro:', error.detail);
-      }
-      
-      throw new Error('Falha ao atualizar contrato');
-    } finally {
-      console.groupEnd();
-    }
+    const exists = await prisma.contract.findFirst({ where: { id, tenantId } });
+    if (!exists) return null;
+    const updated = await prisma.contract.update({ where: { id }, data: {
+      ...data,
+      // updatedAt é gerenciado automaticamente por @updatedAt
+    } as any });
+    return updated as unknown as Contract;
   }
 
-  /**
-   * Deletar contrato
-   */
   static async delete(id: string, tenantId: string): Promise<boolean> {
-    try {
-      const result = await db
-        .delete(contracts)
-        .where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)))
-        .returning();
-
-      return result.length > 0;
-    } catch (error) {
-      console.error('Erro ao deletar contrato:', error);
-      throw new Error('Falha ao deletar contrato');
-    }
+    const exists = await prisma.contract.findFirst({ where: { id, tenantId } });
+    if (!exists) return false;
+    await prisma.contract.delete({ where: { id } });
+    return true;
   }
 
-  /**
-   * Buscar contratos com paginação
-   */
   static async findWithPagination(
     tenantId: string,
     page: number = 1,
     limit: number = 10,
     filters?: Partial<ContractFilters>
   ): Promise<ContractListResponse> {
-    try {
-      const offset = (page - 1) * limit;
-      
-      const conditions = [eq(contracts.tenantId, tenantId)];
-
-      if (filters?.status) {
-        conditions.push(eq(contracts.status, filters.status));
-      }
-
-      if (filters?.responsibleUserId) {
-        conditions.push(eq(contracts.responsibleUserId, filters.responsibleUserId));
-      }
-
-      if (filters?.search) {
-        const searchCondition = or(
-          ilike(contracts.name, `%${filters.search}%`),
-          ilike(contracts.internalCode, `%${filters.search}%`),
-          ilike(contracts.client, `%${filters.search}%`)
-        );
-        if (searchCondition) {
-          conditions.push(searchCondition);
-        }
-      }
-
-      // Buscar contratos com paginação
-      const contractsResult = await db
-        .select()
-        .from(contracts)
-        .where(and(...conditions))
-        .orderBy(desc(contracts.createdAt))
-        .limit(limit)
-        .offset(offset);
-
-      // Contar total de registros
-      const totalResult = await db
-        .select({ count: contracts.id })
-        .from(contracts)
-        .where(and(...conditions));
-
-      const total = totalResult.length;
-
-      return {
-        contracts: contractsResult,
-        total,
-        page,
-        limit,
-      };
-    } catch (error) {
-      console.error('Erro ao buscar contratos com paginação:', error);
-      throw new Error('Falha ao buscar contratos');
+    const skip = (page - 1) * limit;
+    const where: any = { tenantId };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.responsibleUserId) where.responsibleUserId = filters.responsibleUserId;
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { internalCode: { contains: filters.search, mode: 'insensitive' } },
+        { client: { contains: filters.search, mode: 'insensitive' } },
+      ];
     }
+    const [items, total] = await Promise.all([
+      prisma.contract.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      prisma.contract.count({ where }),
+    ]);
+
+    return {
+      contracts: items as unknown as Contract[],
+      total,
+      page,
+      limit,
+    };
   }
 
-  /**
-   * Verificar se contrato existe
-   */
   static async exists(id: string, tenantId: string): Promise<boolean> {
-    try {
-      const result = await db
-        .select({ id: contracts.id })
-        .from(contracts)
-        .where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)))
-        .limit(1);
-
-      return result.length > 0;
-    } catch (error) {
-      console.error('Erro ao verificar existência do contrato:', error);
-      return false;
-    }
+    const count = await prisma.contract.count({ where: { id, tenantId } });
+    return count > 0;
   }
 }

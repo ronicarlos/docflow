@@ -33,7 +33,7 @@ const BasicEditContractModal = ({ isOpen, onClose, contract, users, documentType
     const methods = useForm<UpdateContractData>({
         resolver: zodResolver(updateContractSchema),
         defaultValues: {
-            id: contract.id,
+            // id removido: passado separadamente para a Server Action
             name: contract.name || '',
             internalCode: contract.internalCode || '',
             client: contract.client || '',
@@ -41,7 +41,7 @@ const BasicEditContractModal = ({ isOpen, onClose, contract, users, documentType
             endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : '',
             scope: contract.scope || '',
             status: contract.status || 'active',
-            tenantId: contract.tenantId || '',
+            // tenantId removido: será atribuído no backend pela Server Action
             commonRisks: contract.commonRisks || [],
             alertKeywords: contract.alertKeywords || [],
             analysisDocumentTypeIds: contract.analysisDocumentTypeIds || [],
@@ -51,27 +51,7 @@ const BasicEditContractModal = ({ isOpen, onClose, contract, users, documentType
     const onSubmit = (data: UpdateContractData) => {
         startSavingTransition(async () => {
             try {
-                const fd = new FormData();
-                fd.set('id', data.id!);
-                if (data.name) fd.set('name', data.name);
-                if (data.internalCode) fd.set('internalCode', data.internalCode);
-                if (data.client) fd.set('client', data.client);
-                if (data.startDate) fd.set('startDate', data.startDate);
-                if (data.endDate) fd.set('endDate', data.endDate);
-                if (data.scope) fd.set('scope', data.scope);
-                if (data.status) fd.set('status', data.status);
-                if (data.tenantId) fd.set('tenantId', data.tenantId);
-                if (data.commonRisks) {
-                    data.commonRisks.forEach((r) => fd.append('commonRisks', r));
-                }
-                if (data.alertKeywords) {
-                    data.alertKeywords.forEach((k) => fd.append('alertKeywords', k));
-                }
-                if (data.analysisDocumentTypeIds) {
-                    data.analysisDocumentTypeIds.forEach((id) => fd.append('analysisDocumentTypeIds', id));
-                }
-
-                const result = await updateContract(contract.id, fd);
+                const result = await updateContract(contract.id, data);
 
                 if (result.success) {
                     toast({
@@ -83,7 +63,7 @@ const BasicEditContractModal = ({ isOpen, onClose, contract, users, documentType
                 } else {
                     toast({
                         title: "Erro ao Atualizar",
-                        description: result.error || "Ocorreu um erro ao salvar as alterações.",
+                        description: result.message || "Ocorreu um erro ao salvar as alterações.",
                         variant: "destructive",
                     });
                 }

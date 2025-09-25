@@ -45,7 +45,7 @@ export default async function MinhaEmpresaPage() {
     notFound();
   }
 
-  const { name, cnpj, address, commercialPhone, commercialEmail, plan, status: subscriptionStatus, subscriptionStartDate, nextBillingDate, accountOwner, paymentGatewayStatus, logoUrl } = tenantDetails;
+  const { name, cnpj, address, commercialPhone, commercialEmail, plan, subscriptionStatus, subscriptionStartDate, nextBillingDate, accountOwner, paymentGatewayStatus, logoUrl } = tenantDetails;
   const canEdit = currentUser?.role === 'Admin' || currentUser?.role === 'SuperAdmin';
 
   return (

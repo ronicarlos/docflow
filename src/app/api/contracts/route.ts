@@ -124,15 +124,17 @@ export async function POST(request: NextRequest) {
     // Usar dados do usuário autenticado
     const contractData = {
       ...validation.data,
+      // Garantir valores compatíveis
+      startDate: new Date(validation.data.startDate).toISOString(),
+      endDate: new Date(validation.data.endDate).toISOString(),
+      status: validation.data.status,
+      tenantId: currentUser.tenantId,
+      createdById: currentUser.id,
       responsibleUserId: null // Não definir usuário responsável para evitar erro de FK
     };
     
     // Criar contrato usando o tenantId e userId do usuário logado
-    const contract = await ContractDrizzleService.create(
-      contractData,
-      currentUser.tenantId,
-      currentUser.id
-    );
+    const contract = await ContractDrizzleService.create(contractData);
     
     console.log('✅ [API] Contrato criado com sucesso:', contract.id);
     

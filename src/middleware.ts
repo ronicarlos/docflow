@@ -28,6 +28,12 @@ const devRoutes = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Detectar chamadas de Server Actions (POST com header next-action)
+  const isServerAction = request.method === 'POST' && (
+    request.headers.get('next-action') !== null ||
+    request.headers.get('Next-Action') !== null
+  );
+
   // Rate limiting mais flexível - apenas para prevenir ataques DDoS
   const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
@@ -61,7 +67,13 @@ export async function middleware(request: NextRequest) {
       pathname
     }, 'low');
     
-    // Redirecionar para login se não autenticado
+    // Para Server Actions sem token, não redirecionar (evita Failed to fetch no client);
+    // permitir que a Action faça a checagem de auth e responda adequadamente
+    if (isServerAction) {
+      return NextResponse.next();
+    }
+    
+    // Redirecionar para login se não autenticado (demais requisições)
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);

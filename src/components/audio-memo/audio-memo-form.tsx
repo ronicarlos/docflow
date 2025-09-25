@@ -69,7 +69,7 @@ export const AudioMemoForm: FC<AudioMemoFormProps> = ({ contracts, currentUser }
           } else {
             toast({
               title: "Erro na Geração",
-              description: result.error || "Não foi possível gerar a ata de reunião.",
+              description: result.message || "Não foi possível gerar a ata de reunião.",
               variant: "destructive",
             });
           }

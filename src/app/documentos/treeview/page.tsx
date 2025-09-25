@@ -22,7 +22,7 @@ export default async function DocumentTreeViewPage() {
         redirect('/login');
     }
 
-    const documents = await documentService.findAll(tenantDetails.id);
+    const documents = await documentService.findAll(tenantDetails.tenantId);
     
     // Server-side filtering based on user permissions
     let accessibleDocuments = documents;
@@ -40,7 +40,7 @@ export default async function DocumentTreeViewPage() {
     return (
         <DocumentTreeViewClient 
             initialDocuments={accessibleDocuments} 
-            currentTenant={tenantDetails ? {tenantId: tenantDetails.id, name: tenantDetails.name} : undefined} 
+            currentTenant={tenantDetails ? {tenantId: tenantDetails.tenantId, name: tenantDetails.name} : undefined} 
         />
     );
 }
